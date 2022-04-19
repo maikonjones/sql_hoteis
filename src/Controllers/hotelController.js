@@ -1,11 +1,18 @@
+require ('dotenv').config({path: __dirname + '/./../.env'})
 const express = require('express');
-const db = require('../db')
+const db = require('../Database/db')
+
 const router = express();
 
+const auth = 'Basic ' + Buffer.from(process.env.USER_LOGIN + ':' + process.env.USER_PASSWORD).toString('base64');
 
 
-router.get('/list_all', (req, res) => {
+
+router.get('/list_all', async (req, res) => {
 try {
+    let thisAuth = BasicAuthorization(req.headers.authorization)
+    if (!thisAuth)
+        return res.send({error: 'Usuário não autenticado ou não autorizado a acessar essa área do sistema'})
 
     if (req.query.allData){
         new Promise ((resolve, reject) =>{
@@ -61,10 +68,14 @@ try {
 
 });
 
-
 router.post('/register', (req, res) => {
 try {
-    
+
+    let thisAuth = BasicAuthorization(req.headers.authorization)
+    if (!thisAuth)
+        return res.send({error: 'Usuário não autenticado ou não autorizado a acessar essa área do sistema'})
+
+
     let {name, description, lat, lng, price, status, timestamp} = req.body
 
     new Promise ((resolve, reject) =>{
@@ -76,7 +87,7 @@ try {
             }
             
             resolve(results)
-            return res.send(results)
+            return res.send({message: 'Dados inseridos com sucesso!'})
            
             
         })
@@ -92,5 +103,51 @@ try {
     
 });
 
+router.put('/update', (req, res) => {
+try {
+    let thisAuth = BasicAuthorization(req.headers.authorization)
+    if (!thisAuth)
+        return res.send({error: 'Usuário não autenticado ou não autorizado a acessar essa área do sistema'})
+
+    let {code, name, description, lat, lng, price, status, timestamp} = req.body
+
+
+    console.log(req.body)
+    new Promise ((resolve, reject) =>{
+        db.query('UPDATE hotels SET name = ?, description = ?, lat = ?, lng = ?, price = ?, status = ?, timestamp = ?  WHERE id = ?', 
+            [name, description, lat, lng, price, status, timestamp, code], (error, results) =>{
+            if (error) {
+                reject(error); 
+                return
+            }
+            
+            resolve(results)
+            return res.send({message: 'Dados atualizados com sucesso!'})
+            
+            
+        })
+    
+    
+    })
+    
+    
+    
+} catch (error) {
+    console.log(error)
+}
+    
+});
+
+
+function BasicAuthorization(parameters){
+try{
+    if (parameters !== auth)
+        return false
+    
+    return true
+    } catch (error) {
+    throw error
+}
+}
 
 module.exports = app => app.use('/hotels', router)
